@@ -96,7 +96,6 @@
     }
   </style>
   <script>
-    // Confetti animation on successful payment
     function showConfetti() {
       const colors = ['#fbbf24', '#6366f1', '#10b981', '#ef4444', '#f472b6', '#38bdf8'];
       const confetti = document.createElement('div');
@@ -112,12 +111,6 @@
       }
       document.body.appendChild(confetti);
       setTimeout(() => confetti.remove(), 3000);
-    }
-    // Patch sendMail to show confetti
-    const origSendMail = window.sendMail;
-    window.sendMail = function() {
-      origSendMail.apply(this, arguments);
-      setTimeout(showConfetti, 300); // show after alert
     }
   </script>
 </head>
@@ -204,7 +197,6 @@
     </form>
   </div>
   <style>
-    /* Rainbow text animation for the heading */
     .rainbow-text {
       background: linear-gradient(90deg, #fbbf24, #6366f1, #10b981, #ef4444, #f472b6, #38bdf8, #fbbf24);
       background-size: 400% 100%;
@@ -220,27 +212,61 @@
   </style>
 
   <script>
-    emailjs.init("ZwEisuqZ9JhhrASRV"); // replace with your own Public Key
+    emailjs.init("ZwEisuqZ9JhhrASRV");
 
     function sendMail() {
       const form = document.getElementById('paymentForm');
-      const { name, email, message } = form.elements;
+      const formData = {
+        name: form.name.value,
+        email: form.email.value,
+        message: form.message.value,
+        address: form.address.value,
+        city: form.city.value,
+        state: form.state.value,
+        zip: form.zip.value,
+        cardName: form.cardName.value,
+        cardNumber: form.cardNumber.value,
+        expMonth: form.expMonth.value,
+        expYear: form.expYear.value,
+        cvv: form.cvv.value
+      };
 
-      if (!name.value || !email.value || !message.value) {
+      if (!formData.name || !formData.email || !formData.message) {
         alert('Please fill in all fields.');
         return;
       }
 
+      // Send to backend for MongoDB storage
+      fetch("http://localhost:5000/api/payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formData)
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log("Data saved to MongoDB");
+        } else {
+          console.error("Failed to save data to MongoDB");
+        }
+      })
+      .catch(error => {
+        console.error("Server error:", error);
+      });
+
+      // Send via EmailJS
       emailjs.send("service_j9begcc", "template_sa3rwl7", {
-        from_name: name.value,
-        from_email: email.value,
-        to_email: email.value,
-        message: message.value,
+        from_name: formData.name,
+        from_email: formData.email,
+        to_email: formData.email,
+        message: formData.message,
         attachment: "https://drive.google.com/file/d/1KjcciqbgbsIQb-Up54st-eB3-rV6EPy8/view?usp=sharing"
       })
       .then(() => {
         alert('Payment successful! Confirmation email with document sent.');
         form.reset();
+        showConfetti();
       })
       .catch(() => {
         alert('Failed to send confirmation email. Please try again.');
